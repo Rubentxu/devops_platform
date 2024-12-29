@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -127,7 +128,7 @@ func waitForWorkers(ctx context.Context, managerAddr string) error {
 			Command:    []string{"echo", "test"},
 			WorkingDir: "/tmp",
 		}
-
+		
 		stream, err := client.ExecuteDistributedCommand(ctx, req)
 		if err == nil {
 			// Leer la respuesta para asegurarnos de que todo está bien
@@ -146,40 +147,209 @@ func TestE2E(t *testing.T) {
 	defer cleanup()
 
 	// Connect to Manager via gRPC
-	conn, err := grpc.NewClient(managerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(managerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 	defer conn.Close()
 
 	managerClient := mgr.NewProcessManagementServiceClient(conn)
 
-	// Execute a command that generates multiple traces and takes some time
-	processID := "test-process-123"
-	req := &mgr.ExecuteCommandRequest{
-		ProcessId:  processID,
-		Command:    []string{"/bin/bash", "-c", "for i in {1..5}; do echo 'Simulando salida'; sleep 1; done; echo 'Fin proceso'; exit 0"},
-		WorkingDir: "/tmp",
-		EnvVars:    map[string]string{},
-	}
+	// Test case 1: Comando básico
+	t.Run("Basic Command", func(t *testing.T) {
+		processID := "test-basic-cmd"
+		req := &mgr.ExecuteCommandRequest{
+			ProcessId:  processID,
+			Command:    []string{"echo", "Hello World"},
+			WorkingDir: "/tmp",
+		}
 
-	stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
-	require.NoError(t, err)
+		stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
+		require.NoError(t, err)
 
-	// Read logs by streaming and verify that we get the expected outputs
-	var lines []string
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
+		var lines []string
+		for {
+			msg, err := stream.Recv()
 			if err == io.EOF {
 				break
 			}
-			require.NoError(t, err, "Error receiving stream")
-			break
+			require.NoError(t, err)
+			t.Logf("Received output: %s", msg.Content)
+			lines = append(lines, msg.Content)
 		}
-		fmt.Printf("[LOG stream] %s\n", msg.Content)
-		lines = append(lines, msg.Content)
-	}
 
-	require.Contains(t, lines, "Fin proceso", "Expected logs not received")
+		t.Logf("All received output: %v", lines)
+		require.Greater(t, len(lines), 0, "Expected at least one line of output")
+		found := false
+		for _, line := range lines {
+			if strings.Contains(line, "Hello World") {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Expected output to contain 'Hello World'")
+	})
+
+	// Test case 2: Comando con variables de entorno
+	t.Run("Environment Variables", func(t *testing.T) {
+		req := &mgr.ExecuteCommandRequest{
+			ProcessId:  "test-env-cmd",
+			Command:    []string{"sh", "-c", "echo $TEST_VAR"},
+			WorkingDir: "/tmp",
+			EnvVars: map[string]string{
+				"TEST_VAR": "test value",
+			},
+		}
+
+		stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
+		require.NoError(t, err)
+
+		var lines []string
+		for {
+			msg, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+			lines = append(lines, msg.Content)
+		}
+
+		require.Contains(t, lines, "test value")
+	})
+
+	// Test case 3: Proceso largo y cancelación
+	t.Run("Long Running Process and Cancellation", func(t *testing.T) {
+		ctxWithCancel, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		req := &mgr.ExecuteCommandRequest{
+			ProcessId:  "test-long-process",
+			Command:    []string{"sh", "-c", "for i in $(seq 1 10); do echo $i; sleep 1; done"},
+			WorkingDir: "/tmp",
+		}
+
+		stream, err := managerClient.ExecuteDistributedCommand(ctxWithCancel, req)
+		require.NoError(t, err)
+
+		var lines []string
+		lineCount := 0
+		for {
+			msg, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				if strings.Contains(err.Error(), "context canceled") {
+					break
+				}
+				require.NoError(t, err)
+			}
+			lines = append(lines, msg.Content)
+			lineCount++
+			if lineCount >= 3 {
+				cancel()
+			}
+		}
+
+		require.Less(t, len(lines), 10, "Process should have been cancelled before completion")
+	})
+
+	// Test case 4: Manejo de errores
+	t.Run("Error Handling", func(t *testing.T) {
+		req := &mgr.ExecuteCommandRequest{
+			ProcessId:  "test-error-cmd",
+			Command:    []string{"sh", "-c", "this_command_does_not_exist"},
+			WorkingDir: "/tmp",
+		}
+
+		stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
+		require.NoError(t, err)
+
+		var errFound bool
+		var lines []string
+		for {
+			msg, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				errFound = true
+				t.Logf("Received error: %v", err)
+				require.Contains(t, err.Error(), "exit status", "Expected error with exit status")
+				break
+			}
+			if msg != nil {
+				t.Logf("Received output: %s", msg.Content)
+				lines = append(lines, msg.Content)
+				if strings.Contains(msg.Content, "command not found") || 
+				   strings.Contains(msg.Content, "Worker ocupado") {
+					errFound = true
+				}
+			}
+		}
+
+		if !errFound {
+			t.Logf("All received output: %v", lines)
+		}
+		require.True(t, errFound, "Expected an error, 'command not found', or 'Worker ocupado' message")
+	})
+
+	// Test case 5: Recuperación después de error
+	t.Run("Recovery After Error", func(t *testing.T) {
+		// Esperar un momento para asegurar que el worker esté disponible
+		time.Sleep(5 * time.Second)
+
+		// Ejecutar varios comandos hasta que uno tenga éxito
+		maxAttempts := 5
+		var success bool
+		var lastError error
+
+		for i := 0; i < maxAttempts; i++ {
+			req := &mgr.ExecuteCommandRequest{
+				ProcessId:  fmt.Sprintf("test-recovery-cmd-%d", i),
+				Command:    []string{"sh", "-c", "echo 'recovery test'"},
+				WorkingDir: "/tmp",
+			}
+
+			stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
+			if err != nil {
+				lastError = err
+				time.Sleep(time.Second)
+				continue
+			}
+
+			var lines []string
+			var streamError error
+			for {
+				msg, err := stream.Recv()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					streamError = err
+					break
+				}
+				t.Logf("Received output: %s", msg.Content)
+				lines = append(lines, msg.Content)
+			}
+
+			if streamError != nil {
+				lastError = streamError
+				time.Sleep(time.Second)
+				continue
+			}
+
+			if len(lines) > 0 && lines[0] != "Worker ocupado" {
+				success = true
+				require.Contains(t, lines, "recovery test", "Expected recovery test output")
+				break
+			}
+
+			time.Sleep(time.Second)
+		}
+
+		if !success {
+			t.Fatalf("Failed to execute command after %d attempts. Last error: %v", maxAttempts, lastError)
+		}
+	})
 
 	t.Log("E2E TEST completed successfully.")
 }
