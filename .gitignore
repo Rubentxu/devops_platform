@@ -121,5 +121,5 @@ workerManager/bin
 *.sum
 go.sum
 /go.work.sum
-/adapters/go.sum
+/internal/adapters/go.sum
 /test/go.sum

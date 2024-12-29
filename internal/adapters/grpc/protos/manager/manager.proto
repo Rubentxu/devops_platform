@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package manager;
+
+option go_package = "dev.rubentxu.devops-platform/adapters/grpc/protos/manager";
+
+// Servicio que el Worker usa para registrarse en el WorkerManager.
+service WorkerRegistrationService {
+  rpc RegisterWorker (RegisterWorkerRequest) returns (RegisterWorkerResponse);
+}
+
+// Solicitud y Respuesta para registrar un worker
+message RegisterWorkerRequest {
+  string worker_id = 1;
+  string worker_name = 2;
+  string ip = 3;
+}
+
+message RegisterWorkerResponse {
+  bool success = 1;
+  string message = 2;
+}
+//
+//// Servicio usado por un "cliente externo" para enviar solicitudes de ejecución al WorkerManager.
+//service ProcessManagementService {
+//  // Ejecuta un proceso. Respuesta por streaming para el seguimiento del estado y logs
+//  rpc ExecuteDistributedCommand (ExecuteCommandRequest) returns (stream CommandOutput);
+//
+//  // Termina un proceso en ejecución.
+//  rpc TerminateProcess (TerminateProcessRequest) returns (TerminateProcessResponse);
+//
+//  // Consulta estado de un proceso.
+//  rpc GetProcessStatus (GetProcessStatusRequest) returns (GetProcessStatusResponse);
+//}
+//
+//message ExecuteCommandRequest {
+//  string process_id = 1;
+//  repeated string command = 2;
+//  string working_dir = 3;
+//  map<string, string> env_vars = 4;
+//}
+//
+//message CommandOutput {
+//  string process_id = 1;
+//  bool is_stderr = 2;
+//  string content = 3;
+//  string state = 4;       // "RUNNING", "COMPLETED", etc.
+//  int32 exit_code = 5;    // 0 si todo ok
+//  string error_msg = 6;   // Mensaje de error, si existe
+//}
+//
+//message TerminateProcessRequest {
+//  string process_id = 1;
+//}
+//
+//message TerminateProcessResponse {
+//  bool success = 1;
+//  string message = 2;
+//}
+//
+//message GetProcessStatusRequest {
+//  string process_id = 1;
+//}
+//
+//message GetProcessStatusResponse {
+//  string process_id = 1;
+//  string state = 2;
+//  int32 exit_code = 3;
+//  string error_msg = 4;
+//}

@@ -128,7 +128,7 @@ func waitForWorkers(ctx context.Context, managerAddr string) error {
 			Command:    []string{"echo", "test"},
 			WorkingDir: "/tmp",
 		}
-		
+
 		stream, err := client.ExecuteDistributedCommand(ctx, req)
 		if err == nil {
 			// Leer la respuesta para asegurarnos de que todo está bien
@@ -156,18 +156,18 @@ func TestE2E(t *testing.T) {
 	// Test case 1: Comando básico
 	t.Run("Basic Command", func(t *testing.T) {
 		processID := "test-basic-cmd"
-		req := &mgr.ExecuteCommandRequest{
-			ProcessId:  processID,
+	req := &mgr.ExecuteCommandRequest{
+		ProcessId:  processID,
 			Command:    []string{"echo", "Hello World"},
-			WorkingDir: "/tmp",
-		}
+		WorkingDir: "/tmp",
+	}
 
-		stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
-		require.NoError(t, err)
+	stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
+	require.NoError(t, err)
 
-		var lines []string
-		for {
-			msg, err := stream.Recv()
+	var lines []string
+	for {
+		msg, err := stream.Recv()
 			if err == io.EOF {
 				break
 			}
@@ -206,8 +206,8 @@ func TestE2E(t *testing.T) {
 		for {
 			msg, err := stream.Recv()
 			if err == io.EOF {
-				break
-			}
+			break
+		}
 			require.NoError(t, err)
 			lines = append(lines, msg.Content)
 		}
@@ -242,7 +242,7 @@ func TestE2E(t *testing.T) {
 				}
 				require.NoError(t, err)
 			}
-			lines = append(lines, msg.Content)
+		lines = append(lines, msg.Content)
 			lineCount++
 			if lineCount >= 3 {
 				cancel()
@@ -274,13 +274,13 @@ func TestE2E(t *testing.T) {
 				errFound = true
 				t.Logf("Received error: %v", err)
 				require.Contains(t, err.Error(), "exit status", "Expected error with exit status")
-				break
+			break
 			}
 			if msg != nil {
 				t.Logf("Received output: %s", msg.Content)
 				lines = append(lines, msg.Content)
-				if strings.Contains(msg.Content, "command not found") || 
-				   strings.Contains(msg.Content, "Worker ocupado") {
+				if strings.Contains(msg.Content, "command not found") ||
+					strings.Contains(msg.Content, "Worker ocupado") {
 					errFound = true
 				}
 			}

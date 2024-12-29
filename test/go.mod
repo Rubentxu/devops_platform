@@ -52,7 +52,7 @@ require (
 	github.com/docker/cli v27.0.3+incompatible // indirect
 	github.com/docker/compose/v2 v2.28.1 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/docker/docker v27.1.1+incompatible // indirect
+	github.com/docker/docker v27.4.1+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.0 // indirect
 	github.com/docker/go v1.5.1-1.0.20160303222718-d30aec9fd63c // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
@@ -115,6 +115,7 @@ require (
 	github.com/moby/sys/signal v0.7.0 // indirect
 	github.com/moby/sys/symlink v0.2.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
+	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -202,6 +203,6 @@ require (
 	tags.cncf.io/container-device-interface v0.7.2 // indirect
 )
 
-replace dev.rubentxu/devops_platform/adapters => ../adapters
+replace dev.rubentxu/devops_platform/adapters => ./../internal/adapters
 
-replace dev.rubentxu/devops_platform/core => ../core
+replace dev.rubentxu/devops_platform/core => ./../internal/core

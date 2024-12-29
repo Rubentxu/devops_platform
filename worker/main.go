@@ -27,7 +27,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	worker.RegisterWorkerProcessServiceServer(grpcServer, &server.WorkerServer{})
+	worker.RegisterWorkerProcessServiceServer(grpcServer, &server.WorkerProcessService{})
 	log.Println("Worker escuchando en :50052...")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Fallo al servir gRPC Worker: %v", err)

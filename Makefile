@@ -3,8 +3,8 @@ BIN_DIR := bin
 
 # Ficheros proto a compilar (ajusta rutas según tu estructura)
 PROTO_FILES := \
-	adapters/grpc/protos/manager/manager.proto \
-	adapters/grpc/protos/worker/worker.proto
+	internal/adapters/grpc/protos/manager/manager.proto \
+	internal/adapters/grpc/protos/worker/worker.proto
 
 # Directorio de salida para los .pb.go
 PROTO_OUT := ./
@@ -16,15 +16,20 @@ WORKER_IMAGE := devops-platform/worker:latest
 # Comandos de generación de Protobuf
 generate:
 	@echo "Generando código protobuf..."
-	rm -f adapters/grpc/protos/manager/*pb.go adapters/grpc/protos/worker/*pb.go
+	rm -f internal/adapters/grpc/protos/manager/*pb.go adapters/grpc/protos/worker/*pb.go
 	protoc \
 		--proto_path=. \
 		--go_out=$(PROTO_OUT) --go_opt=paths=source_relative \
 		--go-grpc_out=$(PROTO_OUT) --go-grpc_opt=paths=source_relative \
 		$(PROTO_FILES)
 
+# Instalar dependencias
+deps:
+	@echo "Instalando dependencias..."
+	go mod tidy
+
 # Validar formato del código y dependencias
-lint:
+lint: deps
 	go fmt ./...           # Formato
 	go vet ./...           # Detectar errores potenciales
 	go mod tidy            # Limpia módulos no usados
@@ -34,7 +39,6 @@ build:
 	rm -fr workerManager/$(BIN_DIR) worker/$(BIN_DIR)
 	CGO_ENABLED=0 go build -o workerManager/$(BIN_DIR)/workerManager ./workerManager
 	CGO_ENABLED=0 go build -o worker/$(BIN_DIR)/worker ./worker
-
 
 # Construir las imágenes Docker
 docker-build: build docker-build-manager docker-build-worker
@@ -48,7 +52,6 @@ docker-build-worker:
 # Ejecutar las pruebas unitarias y de integración
 test:
 	go test -v -count=1 ./test/...
-	go test -v -count=1 ./test/e2e/integration_test.go
 
 # Pruebas específicas para integración continua (simulación de integración E2E con Docker)
 ci-test: docker-build
@@ -64,4 +67,4 @@ clean:
 # Alias
 all: build test docker-build ci-test
 
-.PHONY: generate build lint docker-build docker-build-manager docker-build-worker test ci-test clean all
+.PHONY: generate build lint docker-build docker-build-manager docker-build-worker test ci-test clean all deps

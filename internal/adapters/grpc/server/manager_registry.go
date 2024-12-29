@@ -75,7 +75,7 @@ func (p *processManagementServer) ExecuteDistributedCommand(req *manager.Execute
 	}
 
 	// 3. Conectar con el worker y enviar el comando
-	conn, err := grpc.Dial(fmt.Sprintf("%s:50052", worker.IP), grpc.WithInsecure())
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:50052", worker.IP), grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("error conectando con worker: %v", err)
 	}
