@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	mgr "dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
 	"fmt"
 	"log"
 	"strings"
@@ -14,7 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	// Cliente gRPC para Manager
-	mgr "dev.rubentxu.devops-platform/adapters/grpc/protos/manager"
+
 	// Aquí asumes que generaste stubs y están disponibles
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

@@ -2,12 +2,12 @@ package server
 
 import (
 	"context"
-	"fmt"
-
-	"dev.rubentxu.devops-platform/adapters/grpc/protos/manager"
-	w "dev.rubentxu.devops-platform/adapters/grpc/protos/worker"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
+	w "dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/worker"
 	"dev.rubentxu.devops-platform/core/domain"
 	"dev.rubentxu.devops-platform/core/usecase"
+	"fmt"
+
 	"google.golang.org/grpc"
 )
 
@@ -107,11 +107,11 @@ func (p *processManagementServer) ExecuteDistributedCommand(req *manager.Execute
 
 		managerOutput := &manager.CommandOutput{
 			ProcessId: workerOutput.ProcessId,
-			IsStderr: workerOutput.IsStderr,
-			Content:  workerOutput.Content,
-			State:    workerOutput.State,
-			ExitCode: workerOutput.ExitCode,
-			ErrorMsg: workerOutput.ErrorMsg,
+			IsStderr:  workerOutput.IsStderr,
+			Content:   workerOutput.Content,
+			State:     workerOutput.State,
+			ExitCode:  workerOutput.ExitCode,
+			ErrorMsg:  workerOutput.ErrorMsg,
 		}
 
 		if err := stream.Send(managerOutput); err != nil {

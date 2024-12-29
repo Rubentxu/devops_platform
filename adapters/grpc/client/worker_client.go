@@ -2,7 +2,7 @@ package client
 
 import (
 	"context"
-	"dev.rubentxu.devops-platform/adapters/grpc/protos/worker"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/worker"
 
 	"google.golang.org/grpc"
 )

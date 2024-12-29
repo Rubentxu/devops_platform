@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package manager;
 
-option go_package = "dev.rubentxu/devops_platform/adapters/grpc/protos/manager";
+option go_package = "dev.rubentxu.devops-platform/adapters/grpc/protos/manager";
 
 // Servicio que el Worker usa para registrarse en el WorkerManager.
 service WorkerRegistrationService {

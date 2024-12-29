@@ -15,6 +15,8 @@ WORKER_IMAGE := dev.rubentxu.devops-platform/worker:latest
 
 # Comandos de generación de Protobuf
 generate:
+	@echo "Generando código protobuf..."
+	rm -f adapters/grpc/protos/manager/*pb.go adapters/grpc/protos/worker/*pb.go
 	protoc \
 		--proto_path=. \
 		--go_out=$(PROTO_OUT) --go_opt=paths=source_relative \

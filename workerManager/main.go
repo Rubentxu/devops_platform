@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dev.rubentxu.devops-platform/adapters/grpc/protos/manager"
-	"dev.rubentxu.devops-platform/adapters/grpc/server"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/server"
 	"dev.rubentxu.devops-platform/core/usecase"
 	"log"
 	"net"

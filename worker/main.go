@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"dev.rubentxu.devops-platform/adapters/grpc/protos/manager"
-	"dev.rubentxu.devops-platform/adapters/grpc/protos/worker"
-	"dev.rubentxu.devops-platform/adapters/grpc/server"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/worker"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/server"
+
 	"fmt"
 	"log"
 	"net"
@@ -35,7 +36,7 @@ func main() {
 func registerToManager() {
 	maxRetries := 5
 	retryDelay := 2 * time.Second
-	
+
 	for i := 0; i < maxRetries; i++ {
 		if err := tryRegisterToManager(); err != nil {
 			log.Printf("Intento %d de %d fallido: %v", i+1, maxRetries, err)
@@ -52,17 +53,17 @@ func tryRegisterToManager() error {
 	if managerHost == "" {
 		managerHost = "localhost"
 	}
-	
+
 	managerPort := os.Getenv("MANAGER_PORT")
 	if managerPort == "" {
 		managerPort = "50051"
 	}
-	
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "worker-test"
 	}
-	
+
 	managerAddr := fmt.Sprintf("%s:%s", managerHost, managerPort)
 	conn, err := grpc.Dial(managerAddr, grpc.WithInsecure())
 	if err != nil {

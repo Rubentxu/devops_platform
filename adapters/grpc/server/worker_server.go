@@ -3,7 +3,8 @@ package server
 import (
 	"bufio"
 	"context"
-	"dev.rubentxu.devops-platform/adapters/grpc/protos/worker"
+	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/worker"
+
 	"io"
 	"log"
 	"os/exec"

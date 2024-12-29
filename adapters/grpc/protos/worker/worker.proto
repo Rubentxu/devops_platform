@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package worker;
 
-option go_package = "dev.rubentxu/devops_platform/adapters/grpc/protos/worker";
+option go_package = "dev.rubentxu.devops-platform/adapters/grpc/protos/worker";
 
 // Servicio en el Worker que el WorkerManager invoca para ejecutar o terminar procesos.
 service WorkerProcessService {
