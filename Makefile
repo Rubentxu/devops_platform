@@ -10,8 +10,8 @@ PROTO_FILES := \
 PROTO_OUT := ./
 
 # Docker Tags
-MANAGER_IMAGE := dev.rubentxu.devops-platform/manager:latest
-WORKER_IMAGE := dev.rubentxu.devops-platform/worker:latest
+MANAGER_IMAGE := devops-platform/manager:latest
+WORKER_IMAGE := devops-platform/worker:latest
 
 # Comandos de generación de Protobuf
 generate:
@@ -47,7 +47,8 @@ docker-build-worker:
 
 # Ejecutar las pruebas unitarias y de integración
 test:
-	cd test && go test -v -count=1 ./...
+	go test -v -count=1 ./test/...
+	go test -v -count=1 ./test/e2e/integration_test.go
 
 # Pruebas específicas para integración continua (simulación de integración E2E con Docker)
 ci-test: docker-build

@@ -118,3 +118,8 @@ worker/bin
 workerManager/bin
 
 *pb.go
+*.sum
+go.sum
+/go.work.sum
+/adapters/go.sum
+/test/go.sum

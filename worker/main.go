@@ -5,6 +5,7 @@ import (
 	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
 	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/worker"
 	"dev.rubentxu.devops-platform/adapters/grpc/grpc/server"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"fmt"
 	"log"
@@ -65,7 +66,8 @@ func tryRegisterToManager() error {
 	}
 
 	managerAddr := fmt.Sprintf("%s:%s", managerHost, managerPort)
-	conn, err := grpc.Dial(managerAddr, grpc.WithInsecure())
+	log.Printf("Intentando conectar al manager en %s", managerAddr)
+	conn, err := grpc.Dial(managerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Printf("No se pudo conectar al manager en %s: %v", managerAddr, err)
 		return err

@@ -157,3 +157,57 @@ Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](L
 Rubén Túñez - [@rubentxu](https://twitter.com/rubentxu)
 
 Link del proyecto: [https://github.com/Rubentxu/devops-platform](https://github.com/Rubentxu/devops-platform) 
+
+# Pruebas de Integración y E2E
+
+Este documento describe las pruebas de integración y end-to-end (E2E) implementadas para el sistema de ejecución distribuida de comandos. Las pruebas se realizan utilizando `testcontainers-go` para simular entornos de contenedores.
+
+## Pruebas de Integración
+
+### `TestBasicCommandExecution`
+
+- **Descripción**: Verifica la ejecución básica de un comando en el sistema.
+- **Proceso**:
+  1. Envía un comando simple `echo 'Hello World'` al sistema.
+  2. Recibe y verifica que la salida contenga "Hello World".
+- **Objetivo**: Asegurarse de que los comandos básicos se ejecuten correctamente y que la salida sea la esperada.
+
+### `TestLongRunningProcessAndCancellation`
+
+- **Descripción**: Prueba la ejecución de un proceso de larga duración y su cancelación.
+- **Proceso**:
+  1. Inicia un proceso que imprime números del 1 al 30 con un retraso de 1 segundo entre cada uno.
+  2. Intenta cancelar el proceso después de 2 segundos.
+  3. Verifica que el proceso haya sido abortado correctamente.
+- **Objetivo**: Validar que los procesos largos puedan ser cancelados correctamente.
+
+### `TestZombieProcessHandling`
+
+- **Descripción**: Simula un fallo en un worker y verifica el manejo de procesos zombies.
+- **Proceso**:
+  1. Inicia un proceso que se desasocia (`disown`) y duerme por 100 segundos.
+  2. Simula un fallo deteniendo el contenedor del worker.
+  3. Verifica que el proceso sea marcado como fallido.
+- **Objetivo**: Asegurarse de que los procesos zombies sean detectados y manejados adecuadamente.
+
+### `TestErrorHandling`
+
+- **Descripción**: Verifica el manejo de errores al ejecutar comandos inválidos.
+- **Proceso**:
+  1. Envía un comando inválido `invalid_command`.
+  2. Verifica que el estado final sea "FAILED" y que el mensaje de error contenga "command not found".
+- **Objetivo**: Comprobar que los errores de ejecución se manejen correctamente y se informen adecuadamente.
+
+### `TestFailureRecovery`
+
+- **Descripción**: Prueba la capacidad del sistema para recuperarse de fallos.
+- **Proceso**:
+  1. Detiene el contenedor del primer worker para simular un fallo.
+  2. Reinicia el contenedor del worker.
+  3. Envía un comando para verificar que el sistema se haya recuperado.
+  4. Verifica que la salida contenga "recovered".
+- **Objetivo**: Asegurarse de que el sistema pueda recuperarse de fallos y continuar funcionando correctamente.
+
+## Configuración de Pruebas
+
+Cada prueba se ejecuta en un entorno aislado utilizando una red de contenedores única. Esto asegura que las pruebas no interfieran entre sí y que cada una tenga un entorno limpio y controlado. 

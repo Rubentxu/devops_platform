@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM ubuntu:24.04
 
 WORKDIR /app
 COPY workerManager /app/

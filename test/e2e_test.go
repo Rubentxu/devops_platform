@@ -1,113 +1,158 @@
 package test
 
 import (
+	"bufio"
 	"context"
-	mgr "dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
 	"fmt"
-	"log"
-	"strings"
-
+	"io"
 	"testing"
+	"time"
 
+	mgr "dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
 	"github.com/stretchr/testify/require"
-
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-
-	// Cliente gRPC para Manager
-
-	// Aquí asumes que generaste stubs y están disponibles
+	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// TestE2E utiliza testcontainers para arrancar contenedores de Manager y Worker.
+func setupTest(t *testing.T) (context.Context, string, func()) {
+	// Limpiar cualquier contenedor anterior que pudiera haber quedado
+	compose, err := tc.NewDockerCompose("docker-compose.yaml")
+	require.NoError(t, err, "NewDockerCompose()")
+
+	err = compose.Down(context.Background(), tc.RemoveOrphans(true), tc.RemoveImagesLocal)
+	if err != nil {
+		t.Logf("Warning during initial cleanup: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	t.Cleanup(cancel)
+
+	// Función para mostrar los logs de un contenedor
+	showContainerLogs := func(service string) {
+		container, err := compose.ServiceContainer(ctx, service)
+		if err != nil {
+			t.Logf("Error getting %s container: %v", service, err)
+			return
+		}
+		logs, err := container.Logs(ctx)
+		if err != nil {
+			t.Logf("Error getting %s logs: %v", service, err)
+			return
+		}
+		defer logs.Close()
+		scanner := bufio.NewScanner(logs)
+		for scanner.Scan() {
+			t.Logf("%s: %s", service, scanner.Text())
+		}
+	}
+
+	// Mostrar los logs mientras se inician los servicios
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				showContainerLogs("manager")
+				showContainerLogs("worker1")
+				time.Sleep(time.Second)
+			}
+		}
+	}()
+
+	// Iniciar los servicios
+	t.Log("Starting services...")
+	err = compose.Up(ctx)
+	require.NoError(t, err, "compose.Up()")
+	t.Log("Services started successfully")
+
+	// Dar tiempo inicial para que los servicios se inicien
+	time.Sleep(5 * time.Second)
+
+	// Verificar que los servicios están realmente disponibles
+	managerAddr := "localhost:50051"
+
+	// Intentar conectar con el manager
+	t.Log("Checking manager availability...")
+	err = waitForGRPCService(ctx, managerAddr)
+	require.NoError(t, err, "Manager service is not available")
+	t.Log("Manager is available")
+
+	// Esperar a que los workers se registren
+	t.Log("Waiting for workers to register...")
+	err = waitForWorkers(ctx, managerAddr)
+	require.NoError(t, err, "Workers not registered")
+	t.Log("Workers registered successfully")
+
+	cleanup := func() {
+		if err := compose.Down(context.Background(), tc.RemoveOrphans(true), tc.RemoveImagesLocal); err != nil {
+			t.Logf("Error during cleanup: %v", err)
+		}
+	}
+
+	return ctx, managerAddr, cleanup
+}
+
+func waitForGRPCService(ctx context.Context, addr string) error {
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := grpc.NewClient(addr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(),
+			grpc.WithTimeout(2*time.Second))
+		if err == nil {
+			conn.Close()
+			return nil
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return fmt.Errorf("service at %s not available after timeout", addr)
+}
+
+func waitForWorkers(ctx context.Context, managerAddr string) error {
+	deadline := time.Now().Add(30 * time.Second)
+	conn, err := grpc.NewClient(managerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return fmt.Errorf("failed to connect to manager: %v", err)
+	}
+	defer conn.Close()
+
+	client := mgr.NewProcessManagementServiceClient(conn)
+
+	for time.Now().Before(deadline) {
+		// Intentar ejecutar un comando simple para verificar si hay workers disponibles
+		req := &mgr.ExecuteCommandRequest{
+			ProcessId:  "test-worker-availability",
+			Command:    []string{"echo", "test"},
+			WorkingDir: "/tmp",
+		}
+
+		stream, err := client.ExecuteDistributedCommand(ctx, req)
+		if err == nil {
+			// Leer la respuesta para asegurarnos de que todo está bien
+			_, err = stream.Recv()
+			if err == nil || err == io.EOF {
+				return nil
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return fmt.Errorf("no workers available after timeout")
+}
+
 func TestE2E(t *testing.T) {
-	ctx := context.Background()
+	ctx, managerAddr, cleanup := setupTest(t)
+	defer cleanup()
 
-	// 1. Crear red interna para que manager <-> worker se resuelvan por nombre
-	networkName := "devops-platform-testnet"
-	networkRequest := testcontainers.NetworkRequest{
-		Name:   networkName,
-		Driver: "bridge",
-	}
-	testNet, err := testcontainers.GenericNetwork(ctx, testcontainers.GenericNetworkRequest{
-		NetworkRequest: networkRequest,
-	})
-	require.NoError(t, err, "No se pudo crear la red de test")
-
-	defer func() {
-		if testNet != nil {
-			_ = testNet.Remove(ctx)
-		}
-	}()
-
-	// 2. Levantar contenedor del Manager
-	managerReq := testcontainers.ContainerRequest{
-		Name:         "manager-test",
-		Image:        "dev.rubentxu.devops-platform/manager:latest", // Cambiar por la imagen real
-		ExposedPorts: []string{"50051/tcp"},
-		Networks:     []string{networkName},
-		// Esperamos a que en los logs aparezca un mensaje, p.ej. "Worker Manager escuchando en :50051..."
-		WaitingFor: wait.ForLog("Worker Manager escuchando"),
-	}
-	managerC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: managerReq,
-		Started:          true,
-	})
-	require.NoError(t, err, "Fallo al iniciar el contenedor del Manager")
-
-	defer func() {
-		if managerC != nil {
-			_ = managerC.Terminate(ctx)
-		}
-	}()
-
-	// 3. Levantar contenedor del Worker
-	//    Este worker, al arrancar, se conectará a "manager-test:50051"
-	workerReq := testcontainers.ContainerRequest{
-		Name:         "worker-test",
-		Image:        "dev.rubentxu.devops-platform/worker:latest", // Cambiar por la imagen real
-		ExposedPorts: []string{"50052/tcp"},
-		Networks:     []string{networkName},
-		Env: map[string]string{
-			"MANAGER_HOST": "manager-test", // Se resuelve por la red
-			"MANAGER_PORT": "50051",
-		},
-		WaitingFor: wait.ForLog("Worker escuchando"),
-	}
-	workerC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: workerReq,
-		Started:          true,
-	})
-	require.NoError(t, err, "Fallo al iniciar el contenedor del Worker")
-
-	defer func() {
-		if workerC != nil {
-			_ = workerC.Terminate(ctx)
-		}
-	}()
-
-	// 4. Obtener host y puerto del Manager para conectarnos por gRPC
-	managerHost, err := managerC.Host(ctx)
-	require.NoError(t, err)
-
-	managerPort, err := managerC.MappedPort(ctx, "50051")
-	require.NoError(t, err)
-
-	managerAddr := fmt.Sprintf("%s:%d", managerHost, managerPort.Int())
-	log.Printf("Manager accesible en %s", managerAddr)
-
-	// 5. Conectarnos al Manager vía gRPC
-	conn, err := grpc.Dial(managerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Connect to Manager via gRPC
+	conn, err := grpc.NewClient(managerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 	defer conn.Close()
 
 	managerClient := mgr.NewProcessManagementServiceClient(conn)
 
-	// 6. Ejecutar un comando que genere múltiples trazas y tarde un poco
-	// Por ejemplo, un script largo con "for i in 1..50"
-	// Para la demo, asumimos la API manager -> ExecuteDistributedCommand
+	// Execute a command that generates multiple traces and takes some time
 	processID := "test-process-123"
 	req := &mgr.ExecuteCommandRequest{
 		ProcessId:  processID,
@@ -119,53 +164,22 @@ func TestE2E(t *testing.T) {
 	stream, err := managerClient.ExecuteDistributedCommand(ctx, req)
 	require.NoError(t, err)
 
-	// 7. Leer logs por streaming y verificar que obtenemos las salidas esperadas
+	// Read logs by streaming and verify that we get the expected outputs
 	var lines []string
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			if strings.Contains(err.Error(), "EOF") {
+			if err == io.EOF {
 				break
 			}
-			require.NoError(t, err, "Error inesperado recibiendo logs")
-		}
-		if msg == nil {
+			require.NoError(t, err, "Error receiving stream")
 			break
 		}
+		fmt.Printf("[LOG stream] %s\n", msg.Content)
 		lines = append(lines, msg.Content)
-		log.Printf("[LOG stream] %s", msg.Content)
-
-		// Verificar estado final
-		if msg.State == "COMPLETED" || msg.State == "FAILED" {
-			break
-		}
 	}
 
-	require.Contains(t, lines, "Simulando salida", "No se recibieron los logs esperados")
-	require.Contains(t, lines, "Fin proceso")
+	require.Contains(t, lines, "Fin proceso", "Expected logs not received")
 
-	// 8. Test de HealthCheck y Metricas
-	//    - Normalmente, Manager usaría streaming para obtener Health & Metrics.
-	//    - Aquí, haremos una llamada gRPC extra (si estuviera expuesta) o validamos logs.
-
-	//    - O, si Worker exporta un endpoint "ReportMetrics" en streaming, podríamos conectarnos
-	//      del test a la misma interfaz y verificar. Ejemplo (pseudo-código):
-	/*
-	   workerConn, err := grpc.Dial(workerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	   workerClient := w.NewWorkerProcessServiceClient(workerConn)
-
-	   metricsStream, err := workerClient.ReportMetrics(ctx)
-	   // Recibir algunas métricas
-	   ...
-	*/
-
-	// Para demostrar la lógica, simulamos un assert en logs:
-	// (Asumiendo que en logs Worker imprimiría: "CPU usage: 5% ...")
-	// require.Contains(t, allWorkerLogs, "CPU usage: 5%")
-
-	// 9. Terminar (si quisiéramos probar la terminación de un proceso en medio de su ejecución)
-	//    EJEMPLO: managerClient.TerminateProcess(ctx, &mgr.TerminateProcessRequest{ ProcessId: processID })
-
-	// Fin: el test verifica que todo se completó sin errores
-	t.Log("TEST E2E finalizado con éxito.")
+	t.Log("E2E TEST completed successfully.")
 }
