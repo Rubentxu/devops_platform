@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package worker;
+
+option go_package = "dev.rubentxu/devops_platform/adapters/grpc/protos/worker";
+
+// Servicio en el Worker que el WorkerManager invoca para ejecutar o terminar procesos.
+service WorkerProcessService {
+  // Streaming bidireccional: Manager envía ExecuteCommandRequest, Worker responde con CommandOutput
+  rpc ExecuteCommand(stream ExecuteCommandRequest) returns (stream CommandOutput);
+
+  rpc TerminateProcess(TerminateProcessRequest) returns (TerminateProcessResponse);
+
+  // HealthCheck en streaming (el manager se conecta y escucha actualizaciones)
+  rpc HealthCheck(stream HealthCheckRequest) returns (stream HealthCheckResponse);
+
+  // ReportMetrics en streaming (el manager se conecta y escucha metrics)
+  rpc ReportMetrics(stream MetricsRequest) returns (stream MetricsResponse);
+}
+
+message ExecuteCommandRequest {
+  string process_id = 1;
+  repeated string command = 2;
+  string working_dir = 3;
+  map<string, string> env_vars = 4;
+}
+
+message CommandOutput {
+  string process_id = 1;
+  bool is_stderr = 2;
+  string content = 3;
+  string state = 4;
+  int32 exit_code = 5;
+  string error_msg = 6;
+}
+
+message TerminateProcessRequest {
+  string process_id = 1;
+}
+
+message TerminateProcessResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message HealthCheckRequest {
+  string worker_id = 1;
+}
+
+message HealthCheckResponse {
+  bool is_healthy = 1;
+  string status = 2;
+}
+
+message MetricsRequest {
+  string worker_id = 1;
+}
+
+message MetricsResponse {
+  string cpu_usage = 1;
+  string mem_usage = 2;
+  string disk_usage = 3;
+}

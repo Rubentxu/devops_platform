@@ -1,0 +1,48 @@
+# Binarios compilados
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Archivos de prueba
+*.test
+
+# Archivos de cobertura
+*.out
+coverage.html
+
+# Dependencias
+vendor/
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Directorios de build
+build/
+dist/
+
+# Archivos de configuración local
+*.env
+.env.local
+.env.*.local
+
+# Archivos temporales
+tmp/
+temp/
+
+# Archivos generados por protoc
+*.pb.go
+*_grpc.pb.go 

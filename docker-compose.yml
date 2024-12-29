@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  manager:
+    image: dev.rubentxu.devops-platform/manager:latest
+    container_name: devops-platform-manager
+    ports:
+      - "50051:50051"
+    networks:
+      - devops-platform-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker1:
+    image: dev.rubentxu.devops-platform/worker:latest
+    container_name: devops-platform-worker1
+    depends_on:
+      - manager
+    environment:
+      - MANAGER_HOST=devops-platform-manager
+      - MANAGER_PORT=50051
+    networks:
+      - devops-platform-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50052"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker2:
+    image: dev.rubentxu.devops-platform/worker:latest
+    container_name: devops-platform-worker2
+    depends_on:
+      - manager
+    environment:
+      - MANAGER_HOST=devops-platform-manager
+      - MANAGER_PORT=50051
+    networks:
+      - devops-platform-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50052"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  devops-platform-net:
+    name: devops-platform-net
+    driver: bridge 
