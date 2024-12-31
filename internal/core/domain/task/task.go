@@ -3,45 +3,15 @@ package task
 import (
 	"time"
 
+	"dev.rubentxu.devops-platform/core/domain"
 	"github.com/google/uuid"
 )
 
 // TaskSpec define la especificación de una tarea
 type TaskSpec struct {
-	Name      string           `json:"name"`
-	Image     string           `json:"image"`
-	Resources ResourceRequests `json:"resources"`
-	Network   NetworkConfig    `json:"network,omitempty"`
-	Storage   StorageConfig    `json:"storage,omitempty"`
-	Config    ContainerConfig  `json:"config"`
-}
-
-// ResourceRequests especifica los recursos necesarios para la tarea
-type ResourceRequests struct {
-	CPU    float64 `json:"cpu"`    // Unidades de CPU (1.0 = 1 core)
-	Memory int64   `json:"memory"` // Memoria en bytes
-	Disk   int64   `json:"disk"`   // Almacenamiento en bytes
-}
-
-// NetworkConfig define la configuración de red
-type NetworkConfig struct {
-	ExposedPorts map[string]struct{} `json:"exposed_ports,omitempty"` // puertos expuestos
-	PortBindings map[string]string   `json:"port_bindings,omitempty"` // mapeo de puertos host:container
-}
-
-// StorageConfig define la configuración de almacenamiento
-type StorageConfig struct {
-	Volumes map[string]string `json:"volumes,omitempty"` // path_host:path_container
-}
-
-// ContainerConfig define la configuración del contenedor
-type ContainerConfig struct {
-	RestartPolicy string            `json:"restart_policy"`
-	Environment   map[string]string `json:"environment,omitempty"`
-	Labels        map[string]string `json:"labels,omitempty"`
-	WorkingDir    string            `json:"working_dir,omitempty"`
-	Command       []string          `json:"command,omitempty"`
-	Args          []string          `json:"args,omitempty"`
+	SandboxConfig domain.SandboxConfig
+	Command       []string
+	Timeout       time.Duration
 }
 
 // TaskStatus representa el estado actual de una tarea
@@ -84,24 +54,20 @@ func NewTask(name string, image string) *Task {
 			Labels:    make(map[string]string),
 		},
 		Spec: TaskSpec{
-			Name:  name,
-			Image: image,
-			Resources: ResourceRequests{
-				CPU:    0.1,
-				Memory: 256 * 1024 * 1024,  // 256MB
-				Disk:   1024 * 1024 * 1024, // 1GB
-			},
-			Network: NetworkConfig{
-				ExposedPorts: make(map[string]struct{}),
-				PortBindings: make(map[string]string),
-			},
-			Storage: StorageConfig{
-				Volumes: make(map[string]string),
-			},
-			Config: ContainerConfig{
-				RestartPolicy: "no",
-				Environment:   make(map[string]string),
-				Labels:        make(map[string]string),
+			SandboxConfig: domain.SandboxConfig{
+				Image: image,
+				Resources: domain.ResourceRequests{
+					CPU:    "0.1",
+					Memory: "256MB",
+					Disk:   "1GB",
+				},
+				Network: domain.NetworkConfig{
+					ExposedPorts: make(map[string]struct{}),
+					PortBindings: make(map[string]string),
+				},
+				Storage: domain.StorageConfig{
+					Volumes: make(map[string]string),
+				},
 			},
 		},
 		Status: TaskStatus{
@@ -111,8 +77,8 @@ func NewTask(name string, image string) *Task {
 }
 
 // WithResources configura los recursos de la tarea
-func (t *Task) WithResources(cpu float64, memory int64, disk int64) *Task {
-	t.Spec.Resources = ResourceRequests{
+func (t *Task) WithResources(cpu string, memory string, disk string) *Task {
+	t.Spec.SandboxConfig.Resources = domain.ResourceRequests{
 		CPU:    cpu,
 		Memory: memory,
 		Disk:   disk,
@@ -122,7 +88,7 @@ func (t *Task) WithResources(cpu float64, memory int64, disk int64) *Task {
 
 // WithNetwork configura la red de la tarea
 func (t *Task) WithNetwork(exposedPorts map[string]struct{}, portBindings map[string]string) *Task {
-	t.Spec.Network = NetworkConfig{
+	t.Spec.SandboxConfig.Network = domain.NetworkConfig{
 		ExposedPorts: exposedPorts,
 		PortBindings: portBindings,
 	}
@@ -131,18 +97,8 @@ func (t *Task) WithNetwork(exposedPorts map[string]struct{}, portBindings map[st
 
 // WithStorage configura el almacenamiento de la tarea
 func (t *Task) WithStorage(volumes map[string]string) *Task {
-	t.Spec.Storage = StorageConfig{
+	t.Spec.SandboxConfig.Storage = domain.StorageConfig{
 		Volumes: volumes,
-	}
-	return t
-}
-
-// WithConfig configura los parámetros del contenedor
-func (t *Task) WithConfig(restartPolicy string, env map[string]string, labels map[string]string) *Task {
-	t.Spec.Config = ContainerConfig{
-		RestartPolicy: restartPolicy,
-		Environment:   env,
-		Labels:        labels,
 	}
 	return t
 }
@@ -194,13 +150,8 @@ type TaskResult struct {
 	Result      string
 }
 
-func NewConfig(t *Task) ContainerConfig {
-	return ContainerConfig{
-		RestartPolicy: "no",
-		Environment:   t.Spec.Config.Environment,
-		Labels:        t.Spec.Config.Labels,
-		WorkingDir:    t.Spec.Config.WorkingDir,
-		Command:       t.Spec.Config.Command,
-		Args:          t.Spec.Config.Args,
-	}
+func (t Task) Validate() bool {
+	return t.Metadata.ID != uuid.Nil &&
+		len(t.Spec.Command) > 0 &&
+		t.Spec.Timeout > 0
 }

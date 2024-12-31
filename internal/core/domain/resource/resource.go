@@ -2,10 +2,18 @@ package resource
 
 import (
 	"context"
-	"dev.rubentxu.devops-platform/core/domain/task"
+	"github.com/c9s/goprocinfo/linux"
 	"runtime"
 	"time"
 )
+
+type Stats struct {
+	MemStats  *linux.MemInfo
+	DiskStats *linux.Disk
+	CpuStats  *linux.CPUStat
+	LoadStats *linux.LoadAvg
+	TaskCount int
+}
 
 // ResourceStats representa las estadísticas de recursos del sistema
 type ResourceStats struct {
@@ -97,17 +105,7 @@ type ResourcePool interface {
 	// GetStats retorna las estadísticas actuales de recursos
 	GetStats() ResourceStats
 
-	// GetHealthStatus retorna el estado de salud actual
-	GetHealthStatus() HealthStatus
-
-	// ExecuteTask ejecuta una tarea en el pool de recursos
-	ExecuteTask(ctx context.Context, task *task.Task) error
-
-	// GetTaskStatus obtiene el estado actual de una tarea
-	GetTaskStatus(ctx context.Context, taskID string) (*TaskStatus, error)
-
-	// Cleanup realiza la limpieza de recursos
-	Cleanup(ctx context.Context) error
+	CreateWorker(ctx context.Context, workerID string) error
 }
 
 // NewResourceStats crea una nueva instancia de ResourceStats con valores por defecto

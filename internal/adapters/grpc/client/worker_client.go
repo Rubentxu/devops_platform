@@ -18,16 +18,6 @@ type WorkerClient struct {
 	logger ports.Logger
 }
 
-// CommandOutput representa la salida de un comando
-type CommandOutput struct {
-	ProcessID string
-	IsStderr  bool
-	Content   string
-	State     string
-	ExitCode  int32
-	ErrorMsg  string
-}
-
 // NewWorkerClient crea una nueva instancia del cliente
 func NewWorkerClient(conn *grpc.ClientConn, logger ports.Logger) *WorkerClient {
 	return &WorkerClient{
@@ -37,7 +27,14 @@ func NewWorkerClient(conn *grpc.ClientConn, logger ports.Logger) *WorkerClient {
 }
 
 // ExecuteCommand ejecuta un comando en el worker
-func (c *WorkerClient) ExecuteCommand(ctx context.Context, processID string, command []string, workingDir string, envVars map[string]string, outputChan chan<- *CommandOutput) error {
+func (c *WorkerClient) ExecuteCommand(
+	ctx context.Context,
+	processID string,
+	command []string,
+	workingDir string,
+	envVars map[string]string,
+	outputChan chan<- *ports.CommandOutput) error {
+
 	workerStream, err := c.client.ExecuteCommand(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to create command workerStream")
@@ -65,7 +62,7 @@ func (c *WorkerClient) ExecuteCommand(ctx context.Context, processID string, com
 			}
 			if err != nil {
 				c.logger.Error("error receiving command output", "error", err)
-				outputChan <- &CommandOutput{
+				outputChan <- &ports.CommandOutput{
 					ProcessID: processID,
 					State:     "failed",
 					ErrorMsg:  err.Error(),
@@ -73,7 +70,7 @@ func (c *WorkerClient) ExecuteCommand(ctx context.Context, processID string, com
 				return
 			}
 
-			output := &CommandOutput{
+			output := &ports.CommandOutput{
 				ProcessID: resp.ProcessId,
 				IsStderr:  resp.IsStderr,
 				Content:   resp.Content,

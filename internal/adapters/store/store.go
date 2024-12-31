@@ -10,13 +10,6 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-type Store interface {
-	Put(key string, value interface{}) error
-	Get(key string) (interface{}, error)
-	List() (interface{}, error)
-	Count() (int, error)
-}
-
 type InMemoryTaskStore struct {
 	Db map[string]*task.Task
 }
@@ -57,6 +50,15 @@ func (i *InMemoryTaskStore) Count() (int, error) {
 	return len(i.Db), nil
 }
 
+func (i *InMemoryTaskStore) Delete(key string) error {
+	_, ok := i.Db[key]
+	if !ok {
+		return fmt.Errorf("task with key %s does not exist", key)
+	}
+	delete(i.Db, key)
+	return nil
+}
+
 type InMemoryTaskEventStore struct {
 	Db map[string]*task.TaskEvent
 }
@@ -95,6 +97,15 @@ func (i *InMemoryTaskEventStore) List() (interface{}, error) {
 
 func (i *InMemoryTaskEventStore) Count() (int, error) {
 	return len(i.Db), nil
+}
+
+func (i *InMemoryTaskEventStore) Delete(key string) error {
+	_, ok := i.Db[key]
+	if !ok {
+		return fmt.Errorf("task event with key %s does not exist", key)
+	}
+	delete(i.Db, key)
+	return nil
 }
 
 type TaskStore struct {
@@ -218,6 +229,17 @@ func (t *TaskStore) List() (interface{}, error) {
 	return tasks, nil
 }
 
+func (t *TaskStore) Delete(key string) error {
+	return t.Db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(t.Bucket))
+		err := b.Delete([]byte(key))
+		if err != nil {
+			return fmt.Errorf("unable to delete task %s", key)
+		}
+		return nil
+	})
+}
+
 type EventStore struct {
 	DbFile   string
 	FileMode os.FileMode
@@ -334,4 +356,15 @@ func (e *EventStore) List() (interface{}, error) {
 	}
 
 	return events, nil
+}
+
+func (e *EventStore) Delete(key string) error {
+	return e.Db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(e.Bucket))
+		err := b.Delete([]byte(key))
+		if err != nil {
+			return fmt.Errorf("unable to delete event %s", key)
+		}
+		return nil
+	})
 }

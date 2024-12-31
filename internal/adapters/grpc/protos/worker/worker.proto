@@ -16,6 +16,8 @@ service WorkerProcessService {
 
   // ReportMetrics en streaming (el manager se conecta y escucha metrics)
   rpc ReportMetrics(stream MetricsRequest) returns (stream MetricsResponse);
+
+  rpc SyncFiles(SyncRequest) returns (stream SyncResponse); // Nuevo servicio para rsync
 }
 
 message ExecuteCommandRequest {
@@ -60,4 +62,16 @@ message MetricsResponse {
   string cpu_usage = 1;
   string mem_usage = 2;
   string disk_usage = 3;
+}
+
+message SyncRequest {
+  string source_path = 1;
+  string destination_path = 2;
+  bool recursive = 3;
+  bool delete = 4;
+}
+
+message SyncResponse {
+  string output = 1;
+  bool is_error = 2;
 }
