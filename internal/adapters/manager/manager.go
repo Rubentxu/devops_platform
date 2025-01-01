@@ -32,7 +32,7 @@ type Manager struct {
 	LastWorker    int
 	WorkerNodes   []*node.Node
 	Scheduler     scheduler.Scheduler
-	worker        *worker.Worker
+	worker        *worker.WorkerService
 }
 
 func New(workers []string, schedulerType string, dbType string) *Manager {

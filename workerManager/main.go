@@ -1,9 +1,9 @@
 package main
 
 import (
-	"dev.rubentxu.devops-platform/adapters/grpc/grpc/protos/manager"
-	"dev.rubentxu.devops-platform/adapters/grpc/grpc/server"
-	"dev.rubentxu.devops-platform/core/usecase"
+	"dev.rubentxu.devops-platform/adapters/grpc/protos/manager"
+	"dev.rubentxu.devops-platform/adapters/grpc/server"
+	"dev.rubentxu.devops-platform/adapters/worker"
 	"log"
 	"net"
 
@@ -12,8 +12,8 @@ import (
 
 func main() {
 	// 1. Inicializar casos de uso
-	workerUC := usecase.NewWorkerUseCaseImpl()
-	processUC := usecase.NewProcessUseCaseImpl()
+
+	processUC := worker.NewWorkerService()
 
 	// 2. Crear instancias de servidores gRPC
 	workerRegServer := server.NewWorkerRegistrationServer(workerUC)

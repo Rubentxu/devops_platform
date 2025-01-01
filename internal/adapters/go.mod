@@ -1,4 +1,4 @@
-module dev.rubentxu.devops-platform/adapters/grpc
+module dev.rubentxu.devops-platform/adapters
 
 go 1.22.2
 

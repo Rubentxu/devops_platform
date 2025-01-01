@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// WorkerProcessService implementa el servicio WorkerProcessService para ejecutar procesos.
-type WorkerProcessService struct {
+// WorkerProcessServer implementa el servicio WorkerProcessServer para ejecutar procesos.
+type WorkerProcessServer struct {
 	worker.UnimplementedWorkerProcessServiceServer
 	busy bool
 }
@@ -21,7 +21,7 @@ type WorkerProcessService struct {
 // ExecuteCommand usa streaming bidireccional:
 // - El client (WorkerManager) podría enviar parámetros en varios mensajes (no siempre es necesario).
 // - El worker devuelve la salida en streaming.
-func (ws *WorkerProcessService) ExecuteCommand(stream worker.WorkerProcessService_ExecuteCommandServer) error {
+func (ws *WorkerProcessServer) ExecuteCommand(stream worker.WorkerProcessService_ExecuteCommandServer) error {
 	if ws.busy {
 		// Si el worker ya está ocupado
 		return stream.SendMsg(&worker.CommandOutput{
@@ -147,7 +147,7 @@ func (ws *WorkerProcessService) ExecuteCommand(stream worker.WorkerProcessServic
 	})
 }
 
-func (ws *WorkerProcessService) TerminateProcess(ctx context.Context, req *worker.TerminateProcessRequest) (*worker.TerminateProcessResponse, error) {
+func (ws *WorkerProcessServer) TerminateProcess(ctx context.Context, req *worker.TerminateProcessRequest) (*worker.TerminateProcessResponse, error) {
 	// En un caso real deberíamos enviar una señal al proceso en ejecución
 	// o manejar un mapeo processID->cmd para poder matarlo.
 	// Aquí sólo es un ejemplo.
@@ -157,7 +157,7 @@ func (ws *WorkerProcessService) TerminateProcess(ctx context.Context, req *worke
 	}, nil
 }
 
-func (ws *WorkerProcessService) HealthCheck(stream worker.WorkerProcessService_HealthCheckServer) error {
+func (ws *WorkerProcessServer) HealthCheck(stream worker.WorkerProcessService_HealthCheckServer) error {
 	for {
 		_, err := stream.Recv()
 		if err == io.EOF {
@@ -178,7 +178,7 @@ func (ws *WorkerProcessService) HealthCheck(stream worker.WorkerProcessService_H
 	}
 }
 
-func (ws *WorkerProcessService) ReportMetrics(stream worker.WorkerProcessService_ReportMetricsServer) error {
+func (ws *WorkerProcessServer) ReportMetrics(stream worker.WorkerProcessService_ReportMetricsServer) error {
 	for {
 		_, err := stream.Recv()
 		if err == io.EOF {

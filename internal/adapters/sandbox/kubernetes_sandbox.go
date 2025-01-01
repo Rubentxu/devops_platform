@@ -59,7 +59,7 @@ func NewKubernetesContainerSandboxService(config KubernetesConfig) (*KubernetesC
 	}, nil
 }
 
-func (k *KubernetesContainerSandboxService) CreateContainerSandbox(ctx context.Context, config domain.SandboxConfig) (string, error) {
+func (k *KubernetesContainerSandboxService) CreateContainerSandbox(ctx context.Context, config *domain.SandboxConfig) (string, error) {
 
 	cpuQuantity, err := parseCPU(config.Resources.CPU)
 	if err != nil {

@@ -1,14 +1,14 @@
 package domain
 
-// Posibles estados del proceso (compartidos en Worker y WorkerManager).
+// Posibles estados del proceso (compartidos en WorkerInstance y WorkerManager).
 type ProcessState string
 
 const (
-    StatePending   ProcessState = "PENDING"
-    StateScheduled ProcessState = "SCHEDULED"
-    StateRunning   ProcessState = "RUNNING"
-    StateCompleted ProcessState = "COMPLETED"
-    StateFailed    ProcessState = "FAILED"
-    StateBusy      ProcessState = "BUSY"
-    StateAborted   ProcessState = "ABORTED"
+	StatePending   ProcessState = "PENDING"
+	StateScheduled ProcessState = "SCHEDULED"
+	StateRunning   ProcessState = "RUNNING"
+	StateCompleted ProcessState = "COMPLETED"
+	StateFailed    ProcessState = "FAILED"
+	StateBusy      ProcessState = "BUSY"
+	StateAborted   ProcessState = "ABORTED"
 )

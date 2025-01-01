@@ -21,7 +21,7 @@ func NewHyperVContainerSandboxService(config HyperVConfig) (*HyperVContainerSand
 	return &HyperVContainerSandboxService{vmImagePath: config.VMImagePath}, nil
 }
 
-func (h *HyperVContainerSandboxService) CreateContainerSandbox(ctx context.Context, config domain.SandboxConfig) (string, error) {
+func (h *HyperVContainerSandboxService) CreateContainerSandbox(ctx context.Context, config *domain.SandboxConfig) (string, error) {
 	vmImagePath, ok := config.Metadata["vm_image_path"]
 	if !ok {
 		return "", fmt.Errorf("missing 'vm_image_path' in metadata")

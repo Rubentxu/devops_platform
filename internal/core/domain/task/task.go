@@ -153,5 +153,7 @@ type TaskResult struct {
 func (t Task) Validate() bool {
 	return t.Metadata.ID != uuid.Nil &&
 		len(t.Spec.Command) > 0 &&
-		t.Spec.Timeout > 0
+		t.Spec.Timeout > 0 &&
+		t.Spec.SandboxConfig.Image != ""
+
 }

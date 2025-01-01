@@ -22,11 +22,12 @@ func NewManagerClient(conn *grpc.ClientConn) *ManagerClient {
 }
 
 // RegisterWorker registra un nuevo worker en el manager
-func (c *ManagerClient) RegisterWorker(workerID, workerName, ip string) error {
+func (c *ManagerClient) RegisterWorker(workerID, workerName, address string, port int32) error {
 	req := &manager.RegisterWorkerRequest{
 		WorkerId:   workerID,
 		WorkerName: workerName,
-		Ip:         ip,
+		Address:    address,
+		Port:       port,
 	}
 
 	resp, err := c.client.RegisterWorker(context.Background(), req)
